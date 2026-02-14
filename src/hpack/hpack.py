@@ -4,9 +4,10 @@ Implements the HPACK header compression algorithm as detailed by RFC 7541.
 from __future__ import annotations
 
 import logging
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, Literal, overload
 
-from .exceptions import HPACKDecodingError, InvalidTableSizeError, OversizedHeaderListError
+from .exceptions import (HPACKDecodingError, InvalidTableSizeError,
+                         OversizedHeaderListError)
 from .huffman import HuffmanEncoder
 from .huffman_constants import REQUEST_CODES, REQUEST_CODES_LENGTH
 from .huffman_table import decode_huffman
@@ -456,7 +457,16 @@ class Decoder:
     def header_table_size(self, value: int) -> None:
         self.header_table.maxsize = value
 
-    def decode(self, data: bytes, raw: bool = False) -> Iterable[HeaderTuple]:
+    @overload
+    def decode(self, data:bytes) -> Iterable[tuple[str, str]]:...
+
+    @overload
+    def decode(self, data:bytes, raw: Literal[True] = ...) -> Iterable[HeaderTuple]:...
+
+    @overload
+    def decode(self, data:bytes, raw: Literal[False] = ...) -> Iterable[tuple[str, str]]:...
+
+    def decode(self, data: bytes, raw: bool = False) -> Iterable[HeaderTuple] | Iterable[tuple[str, str]]:
         """
         Takes an HPACK-encoded header block and decodes it into a header set.
 
