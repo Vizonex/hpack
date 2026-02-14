@@ -1,13 +1,13 @@
 """
 Implements the HPACK header compression algorithm as detailed by RFC 7541.
 """
+
 from __future__ import annotations
 
 import logging
 from typing import TYPE_CHECKING, Any, Literal, overload
 
-from .exceptions import (HPACKDecodingError, InvalidTableSizeError,
-                         OversizedHeaderListError)
+from .exceptions import HPACKDecodingError, InvalidTableSizeError, OversizedHeaderListError
 from .huffman import HuffmanEncoder
 from .huffman_constants import REQUEST_CODES, REQUEST_CODES_LENGTH
 from .huffman_table import decode_huffman
@@ -26,11 +26,11 @@ INDEX_INCREMENTAL = b"\x40"
 # Precompute 2^i for 1-8 for use in prefix calcs.
 # Zero index is not used but there to save a subtraction
 # as prefix numbers are not zero indexed.
-_PREFIX_BIT_MAX_NUMBERS = [(2 ** i) - 1 for i in range(9)]
+_PREFIX_BIT_MAX_NUMBERS = [(2**i) - 1 for i in range(9)]
 
 # We default the maximum header list we're willing to accept to 64kB. That's a
 # lot of headers, but if applications want to raise it they can do.
-DEFAULT_MAX_HEADER_LIST_SIZE = 2 ** 16
+DEFAULT_MAX_HEADER_LIST_SIZE = 2**16
 
 
 def _unicode_if_needed(header: HeaderWeaklyTyped, raw: bool) -> HeaderTuple:
@@ -91,7 +91,7 @@ def decode_integer(data: bytes | memoryview, prefix_bits: int) -> tuple[int, int
     max_number = _PREFIX_BIT_MAX_NUMBERS[prefix_bits]
     index = 1
     shift = 0
-    mask = (0xFF >> (8 - prefix_bits))
+    mask = 0xFF >> (8 - prefix_bits)
 
     try:
         number = data[0] & mask
@@ -116,8 +116,7 @@ def decode_integer(data: bytes | memoryview, prefix_bits: int) -> tuple[int, int
     return number, index
 
 
-def _dict_to_iterable(header_dict: dict[bytes | str, bytes | str]) \
-        -> Iterable[tuple[bytes | str, bytes | str]]:
+def _dict_to_iterable(header_dict: dict[bytes | str, bytes | str]) -> Iterable[tuple[bytes | str, bytes | str]]:
     """
     Converts a dictionary to an iterable of key-value tuples. This is a
     HPACK-specific function because it pulls "special-headers" out first and
@@ -156,7 +155,8 @@ class Encoder:
     def __init__(self) -> None:
         self.header_table = HeaderTable()
         self.huffman_coder = HuffmanEncoder(
-            REQUEST_CODES, REQUEST_CODES_LENGTH,
+            REQUEST_CODES,
+            REQUEST_CODES_LENGTH,
         )
         self.table_size_changes: list[int] = []
 
@@ -173,13 +173,12 @@ class Encoder:
         if self.header_table.resized:
             self.table_size_changes.append(value)
 
-    def encode(self,
-               headers: Iterable[\
-                   HeaderTuple | \
-                   tuple[bytes | str, bytes | str] | \
-                   tuple[bytes | str, bytes | str, bool | None]] | \
-                   dict[bytes | str, bytes | str],
-               huffman: bool = True) -> bytes:
+    def encode(
+        self,
+        headers: Iterable[HeaderTuple | tuple[bytes | str, bytes | str] | tuple[bytes | str, bytes | str, bool | None]]
+        | dict[bytes | str, bytes | str],
+        huffman: bool = True,
+    ) -> bytes:
         """
         Takes a set of headers and encodes them into a HPACK-encoded header
         block.
@@ -324,7 +323,10 @@ class Encoder:
             # indexing since they just take space in the table and
             # pushed out other valuable headers.
             encoded = self._encode_indexed_literal(
-                index, value, indexbit, huffman,
+                index,
+                value,
+                indexbit,
+                huffman,
             )
             if not sensitive:
                 self.header_table.add(name, value)
@@ -458,13 +460,13 @@ class Decoder:
         self.header_table.maxsize = value
 
     @overload
-    def decode(self, data:bytes) -> Iterable[tuple[str, str]]:...
+    def decode(self, data: bytes) -> Iterable[tuple[str, str]]: ...
 
     @overload
-    def decode(self, data:bytes, raw: Literal[True] = ...) -> Iterable[HeaderTuple]:...
+    def decode(self, data: bytes, raw: Literal[True] = ...) -> Iterable[HeaderTuple]: ...
 
     @overload
-    def decode(self, data:bytes, raw: Literal[False] = ...) -> Iterable[tuple[str, str]]:...
+    def decode(self, data: bytes, raw: Literal[False] = ...) -> Iterable[tuple[str, str]]: ...
 
     def decode(self, data: bytes, raw: bool = False) -> Iterable[HeaderTuple] | Iterable[tuple[str, str]]:
         """
@@ -621,7 +623,7 @@ class Decoder:
             data = data[1:]
 
             length, consumed = decode_integer(data, 7)
-            name = data[consumed:consumed + length]
+            name = data[consumed : consumed + length]
             if len(name) != length:
                 msg = "Truncated header block"
                 raise HPACKDecodingError(msg)
@@ -630,11 +632,11 @@ class Decoder:
                 name = decode_huffman(name)
             total_consumed = consumed + length + 1  # Since we moved forward 1.
 
-        data = data[consumed + length:]
+        data = data[consumed + length :]
 
         # The header value is definitely length-based.
         length, consumed = decode_integer(data, 7)
-        value = data[consumed:consumed + length]
+        value = data[consumed : consumed + length]
         if len(value) != length:
             msg = "Truncated header block"
             raise HPACKDecodingError(msg)
